@@ -67,7 +67,7 @@ function MemoListPage() {
         params.append('favorites', 'true');
       }
 
-      const response = await fetch(`http://localhost:3001/api/memos?${params}`, {
+      const response = await fetch(`/api/memos?${params}`, {
         headers: {
           'Authorization': token,
           'Content-Type': 'application/json'
@@ -103,7 +103,7 @@ function MemoListPage() {
       const token = checkAuth();
       if (!token) return;
 
-      const response = await fetch(`http://localhost:3001/api/memos/${id}`, {
+      const response = await fetch(`/api/memos/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': token,
@@ -131,7 +131,7 @@ function MemoListPage() {
       const token = checkAuth();
       if (!token) return;
 
-      const response = await fetch(`http://localhost:3001/api/memos/${id}/favorite`, {
+      const response = await fetch(`/api/memos/${id}/favorite`, {
         method: 'POST',
         headers: {
           'Authorization': token,
@@ -177,7 +177,7 @@ function MemoListPage() {
       return;
     }
     try {
-      const response = await fetch(`http://localhost:3001/api/memos/${selectedMemoId}/share`, {
+      const response = await fetch(`/api/memos/${selectedMemoId}/share`, {
         method: 'POST',
         headers: {
           'Authorization': token,

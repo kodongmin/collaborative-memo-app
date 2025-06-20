@@ -18,7 +18,7 @@ const FileAttachment = ({ memoId, attachmentUrl, attachmentName, onUploadSuccess
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/memos/${memoId}/attachment`, {
+      const response = await fetch(`/api/memos/${memoId}/attachment`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -43,7 +43,7 @@ const FileAttachment = ({ memoId, attachmentUrl, attachmentName, onUploadSuccess
   const handleDelete = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/memos/${memoId}/attachment`, {
+      const response = await fetch(`/api/memos/${memoId}/attachment`, {
         method: 'DELETE',
         headers: {
           'Authorization': token

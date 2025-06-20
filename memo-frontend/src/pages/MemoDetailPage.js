@@ -5,7 +5,7 @@ import { Container, Box, TextField, Button, Typography, Paper, Dialog, DialogTit
 import ShareIcon from '@mui/icons-material/Share';
 import FileAttachment from '../components/FileAttachment';
 
-const API_BASE = 'http://localhost:3001/api/memos';
+const API_BASE = '/api/memos';
 
 const MemoDetailPage = () => {
   const { id } = useParams();

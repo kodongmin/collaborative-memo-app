@@ -39,7 +39,7 @@ function MemoEditPage() {
 
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/api/memos/${id}`, {
+      const response = await fetch(`/api/memos/${id}`, {
         headers: {
           'Authorization': token,
           'Content-Type': 'application/json'
@@ -91,8 +91,8 @@ function MemoEditPage() {
 
     try {
       const url = isNewMemo 
-        ? 'http://localhost:3001/api/memos'
-        : `http://localhost:3001/api/memos/${id}`;
+        ? '/api/memos'
+        : `/api/memos/${id}`;
 
       const method = isNewMemo ? 'POST' : 'PUT';
 
@@ -198,17 +198,17 @@ function MemoEditPage() {
               type="submit"
               variant="contained"
               color="primary"
-              fullWidth
               disabled={saving}
+              sx={{ flexGrow: 1 }}
             >
-              {saving ? '저장 중...' : (isNewMemo ? '작성' : '수정')}
+              {saving ? <CircularProgress size={24} /> : (isNewMemo ? '작성' : '수정')}
             </Button>
             <Button
               variant="outlined"
               color="secondary"
-              fullWidth
               onClick={() => navigate('/memos')}
               disabled={saving}
+              sx={{ flexGrow: 1 }}
             >
               취소
             </Button>
