@@ -32,6 +32,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import SortIcon from '@mui/icons-material/Sort';
 import ListIcon from '@mui/icons-material/List';
 import GradeIcon from '@mui/icons-material/Grade';
+import ClearIcon from '@mui/icons-material/Clear';
 
 function MemoListPage() {
   const [memos, setMemos] = useState([]);
@@ -44,120 +45,96 @@ function MemoListPage() {
   const [selectedMemoId, setSelectedMemoId] = useState(null);
   const navigate = useNavigate();
 
-  const checkAuth = useCallback(() => {
+  useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/login');
-      return null;
+      return;
     }
-    return token;
-  }, [navigate]);
 
-  const fetchMemos = useCallback(async (currentSearchTerm) => {
+    const params = new URLSearchParams({
+      search: '',
+      sort: sortOption,
+      favorites: viewMode === 'favorites' ? 'true' : ''
+    });
+
+    fetch(`/api/memos?${params.toString()}`, { headers: { 'Authorization': token } })
+      .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch'))
+      .then(data => setMemos(data))
+      .catch(error => console.error("Error fetching memos:", error));
+
+  }, [sortOption, viewMode, navigate]);
+
+  const handleSearch = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return navigate('/login');
+
+    const params = new URLSearchParams({
+      search: searchTerm,
+      sort: sortOption,
+      favorites: viewMode === 'favorites' ? 'true' : ''
+    });
+
     try {
-      const token = checkAuth();
-      if (!token) return;
-
-      const params = new URLSearchParams({
-        search: currentSearchTerm,
-        sort: sortOption,
-      });
-
-      if (viewMode === 'favorites') {
-        params.append('favorites', 'true');
-      }
-
-      const response = await fetch(`/api/memos?${params.toString()}`, {
-        headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
-        return;
-      }
-      
+      const response = await fetch(`/api/memos?${params.toString()}`, { headers: { 'Authorization': token } });
       if (response.ok) {
         const data = await response.json();
         setMemos(data);
       } else {
-        throw new Error('Failed to fetch memos');
+        console.error("Search failed");
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Search error:", error);
     }
-  }, [sortOption, viewMode, navigate, checkAuth]);
+  };
 
-  useEffect(() => {
-    fetchMemos('');
-  }, [sortOption, viewMode, fetchMemos]);
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const params = new URLSearchParams({ search: '', sort: sortOption, favorites: viewMode === 'favorites' ? 'true' : '' });
+    fetch(`/api/memos?${params.toString()}`, { headers: { 'Authorization': token } })
+      .then(res => res.json())
+      .then(data => setMemos(data));
+  };
+  
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const refreshList = async () => {
+    await handleSearch();
+  };
 
   const handleDelete = async (id) => {
+    const token = localStorage.getItem('token');
+    if (!token) return navigate('/login');
     try {
-      const token = checkAuth();
-      if (!token) return;
-
-      const response = await fetch(`/api/memos/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
-        return;
-      }
-      
-      if (response.ok) {
-        fetchMemos(searchTerm);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    }
+      const response = await fetch(`/api/memos/${id}`, { method: 'DELETE', headers: { 'Authorization': token } });
+      if (response.ok) await refreshList();
+    } catch (error) { console.error('Error:', error); }
   };
 
   const handleToggleFavorite = async (id, currentStatus) => {
+    const token = localStorage.getItem('token');
+    if (!token) return navigate('/login');
     try {
-      const token = checkAuth();
-      if (!token) return;
-
       const response = await fetch(`/api/memos/${id}/favorite`, {
         method: 'POST',
-        headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Authorization': token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_favorite: !currentStatus })
       });
-      
-      if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
-        return;
-      }
-      
-      if (response.ok) {
-        fetchMemos(searchTerm);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    }
+      if (response.ok) await refreshList();
+    } catch (error) { console.error('Error:', error); }
   };
 
   const handleEdit = useCallback((id) => {
-    const token = checkAuth();
+    const token = localStorage.getItem('token');
     if (!token) return;
     navigate(`/memos/${id}/edit`);
-  }, [navigate, checkAuth]);
+  }, [navigate]);
 
   const handleShare = (id) => {
     setSelectedMemoId(id);
@@ -168,7 +145,7 @@ function MemoListPage() {
 
   const handleShareSubmit = async () => {
     setShareMsg('');
-    const token = checkAuth();
+    const token = localStorage.getItem('token');
     if (!token) return;
     if (!shareEmail) {
       setShareMsg('이메일을 입력하세요.');
@@ -212,16 +189,6 @@ function MemoListPage() {
     }
   };
 
-  const handleSearch = () => {
-    fetchMemos(searchTerm);
-  };
-  
-  const handleKeyDown = (event) => {
-    if (event.key === 'Enter') {
-      handleSearch();
-    }
-  };
-
   return (
     <Container component={Paper} elevation={3} sx={{ mt: 4, p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -254,6 +221,13 @@ function MemoListPage() {
                   </IconButton>
                 </InputAdornment>
               ),
+              endAdornment: searchTerm && (
+                <InputAdornment position="end">
+                  <IconButton onClick={handleClearSearch} edge="end" aria-label="clear search">
+                    <ClearIcon />
+                  </IconButton>
+                </InputAdornment>
+              )
             }}
           />
           <FormControl sx={{ minWidth: 120 }}>
