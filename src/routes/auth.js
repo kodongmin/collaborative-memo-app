@@ -7,7 +7,7 @@ const pool = require('../db');
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { username, email, password } = req.body;
 
     // Check if user exists
     const emailCheck = await pool.query(
@@ -25,7 +25,7 @@ router.post('/register', async (req, res) => {
     // Create user
     const result = await pool.query(
       'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, email, username',
-      [name, email, hashedPassword]
+      [username, email, hashedPassword]
     );
 
     const user = result.rows[0];
