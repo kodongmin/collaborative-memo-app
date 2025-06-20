@@ -65,7 +65,13 @@ function MemoListPage() {
     if (!token) return navigate('/login');
     try {
       const response = await fetch(`/api/memos/${id}`, { method: 'DELETE', headers: { 'Authorization': token } });
-      if (response.ok) await refreshList();
+      if (response.ok) {
+        // 목록 새로고침
+        const params = new URLSearchParams({ sort: sortOption, favorites: viewMode === 'favorites' ? 'true' : '' });
+        fetch(`/api/memos?${params.toString()}`, { headers: { 'Authorization': token } })
+          .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch'))
+          .then(data => setMemos(data));
+      }
     } catch (error) { console.error('Error:', error); }
   };
 
@@ -78,7 +84,13 @@ function MemoListPage() {
         headers: { 'Authorization': token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_favorite: !currentStatus })
       });
-      if (response.ok) await refreshList();
+      if (response.ok) {
+        // 목록 새로고침
+        const params = new URLSearchParams({ sort: sortOption, favorites: viewMode === 'favorites' ? 'true' : '' });
+        fetch(`/api/memos?${params.toString()}`, { headers: { 'Authorization': token } })
+          .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch'))
+          .then(data => setMemos(data));
+      }
     } catch (error) { console.error('Error:', error); }
   };
 
