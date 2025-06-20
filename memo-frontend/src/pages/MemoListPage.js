@@ -36,6 +36,7 @@ import GradeIcon from '@mui/icons-material/Grade';
 function MemoListPage() {
   const [memos, setMemos] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState('newest');
   const [viewMode, setViewMode] = useState('all'); // 'all' or 'favorites'
   const [shareDialog, setShareDialog] = useState(false);
@@ -59,7 +60,7 @@ function MemoListPage() {
       if (!token) return;
 
       const params = new URLSearchParams({
-        search: searchTerm,
+        search: debouncedSearchTerm,
         sort: sortOption
       });
 
@@ -90,7 +91,17 @@ function MemoListPage() {
     } catch (error) {
       console.error('Error:', error);
     }
-  }, [searchTerm, sortOption, viewMode, navigate, checkAuth]);
+  }, [debouncedSearchTerm, sortOption, viewMode, navigate, checkAuth]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchTerm]);
 
   useEffect(() => {
     const token = checkAuth();
@@ -233,14 +244,16 @@ function MemoListPage() {
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
           <TextField
             fullWidth
-            variant="outlined"
             placeholder="메모 검색..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ mr: 2, flexGrow: 1 }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon />
+                  <IconButton onClick={fetchMemos} edge="start">
+                    <SearchIcon />
+                  </IconButton>
                 </InputAdornment>
               ),
             }}

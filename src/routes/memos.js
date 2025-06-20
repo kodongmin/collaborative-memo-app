@@ -259,86 +259,82 @@ router.post('/:id/share', auth, async (req, res) => {
   }
 });
 
-// Upload file attachment to memo
+// Add/Update an attachment to a memo
 router.post('/:id/attachment', auth, upload.single('file'), async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.userId;
+
+  if (!req.file) {
+    return res.status(400).json({ message: '파일이 제공되지 않았습니다.' });
+  }
+
   try {
-    const { id } = req.params;
-    const userId = req.user.userId;
-    const file = req.file;
-
-    if (!file) {
-      return res.status(400).json({ message: 'No file uploaded' });
-    }
-
-    // Check if memo exists and belongs to user
-    const memo = await pool.query(
-      'SELECT * FROM memos WHERE id = $1 AND user_id = $2',
+    // 1. Check memo ownership
+    const memoResult = await pool.query(
+      'SELECT attachment_s3_key FROM memos WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
 
-    if (memo.rows.length === 0) {
-      return res.status(404).json({ message: 'Memo not found or unauthorized' });
+    if (memoResult.rows.length === 0) {
+      return res.status(403).json({ message: '권한이 없습니다.' });
     }
 
-    // Delete existing attachment if any
-    if (memo.rows[0].attachment_key) {
-      try {
-        await deleteFromS3(memo.rows[0].attachment_key);
-      } catch (error) {
-        console.error('Failed to delete existing file:', error);
-      }
+    // 2. If an old file exists, delete it from S3
+    const oldKey = memoResult.rows[0].attachment_s3_key;
+    if (oldKey) {
+      await deleteFromS3(oldKey);
     }
+    
+    // 3. Upload new file to S3
+    const { key, url } = await uploadToS3(req.file);
 
-    // Upload file to S3
-    const uploadResult = await uploadToS3(file);
-
-    // Update memo with attachment info
-    const updatedMemo = await pool.query(
-      'UPDATE memos SET attachment_url = $1, attachment_key = $2, attachment_name = $3 WHERE id = $4 AND user_id = $5 RETURNING *',
-      [uploadResult.url, uploadResult.key, file.originalname, id, userId]
+    // 4. Update database with new file info
+    const updateResult = await pool.query(
+      'UPDATE memos SET attachment_url = $1, attachment_s3_key = $2, attachment_name = $3 WHERE id = $4 RETURNING *',
+      [url, key, req.file.originalname, id]
     );
-
-    res.json(updatedMemo.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to upload file' });
+    
+    res.json({
+      message: '파일이 성공적으로 업로드되었습니다.',
+      attachment_url: url,
+      attachment_name: req.file.originalname,
+    });
+  } catch (error) {
+    console.error('File upload error:', error);
+    res.status(500).json({ message: '파일 업로드 중 오류가 발생했습니다.' });
   }
 });
 
-// Delete file attachment from memo
+// Delete an attachment from a memo
 router.delete('/:id/attachment', auth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.userId;
+
   try {
-    const { id } = req.params;
-    const userId = req.user.userId;
-
-    // Get memo and attachment info
-    const memo = await pool.query(
-      'SELECT * FROM memos WHERE id = $1 AND user_id = $2',
+    // 1. Check memo ownership and get the S3 key
+    const memoResult = await pool.query(
+      'SELECT attachment_s3_key FROM memos WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
 
-    if (memo.rows.length === 0) {
-      return res.status(404).json({ message: 'Memo not found or unauthorized' });
+    if (memoResult.rows.length === 0 || !memoResult.rows[0].attachment_s3_key) {
+      return res.status(404).json({ message: '삭제할 파일이 없거나 권한이 없습니다.' });
     }
 
-    const { attachment_key } = memo.rows[0];
-    if (!attachment_key) {
-      return res.status(404).json({ message: 'No attachment found' });
-    }
+    // 2. Delete file from S3
+    const s3Key = memoResult.rows[0].attachment_s3_key;
+    await deleteFromS3(s3Key);
 
-    // Delete file from S3
-    await deleteFromS3(attachment_key);
-
-    // Update memo to remove attachment info
-    const updatedMemo = await pool.query(
-      'UPDATE memos SET attachment_url = NULL, attachment_key = NULL, attachment_name = NULL WHERE id = $1 AND user_id = $2 RETURNING *',
-      [id, userId]
+    // 3. Remove file info from the database
+    await pool.query(
+      'UPDATE memos SET attachment_url = NULL, attachment_s3_key = NULL, attachment_name = NULL WHERE id = $1',
+      [id]
     );
 
-    res.json(updatedMemo.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to delete file' });
+    res.json({ message: '파일이 성공적으로 삭제되었습니다.' });
+  } catch (error) {
+    console.error('File deletion error:', error);
+    res.status(500).json({ message: '파일 삭제 중 오류가 발생했습니다.' });
   }
 });
 
