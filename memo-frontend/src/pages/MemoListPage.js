@@ -48,26 +48,26 @@ function MemoListPage() {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/login');
-      return false;
+      return null;
     }
     return token;
   }, [navigate]);
 
-  const fetchMemos = useCallback(async () => {
+  const fetchMemos = useCallback(async (currentSearchTerm) => {
     try {
       const token = checkAuth();
       if (!token) return;
 
       const params = new URLSearchParams({
-        search: searchTerm,
-        sort: sortOption
+        search: currentSearchTerm,
+        sort: sortOption,
       });
 
       if (viewMode === 'favorites') {
         params.append('favorites', 'true');
       }
 
-      const response = await fetch(`/api/memos?${params}`, {
+      const response = await fetch(`/api/memos?${params.toString()}`, {
         headers: {
           'Authorization': token,
           'Content-Type': 'application/json'
@@ -90,23 +90,11 @@ function MemoListPage() {
     } catch (error) {
       console.error('Error:', error);
     }
-  }, [searchTerm, sortOption, viewMode, navigate, checkAuth]);
+  }, [sortOption, viewMode, navigate, checkAuth]);
 
   useEffect(() => {
-    const initialFetch = async () => {
-      const token = checkAuth();
-      if (!token) return;
-      
-      const response = await fetch(`/api/memos?sort=${sortOption}`, {
-        headers: { 'Authorization': token }
-      });
-      if(response.ok) {
-        const data = await response.json();
-        setMemos(data);
-      }
-    };
-    initialFetch();
-  }, [sortOption, viewMode, navigate, checkAuth]);
+    fetchMemos('');
+  }, [sortOption, viewMode, fetchMemos]);
 
   const handleDelete = async (id) => {
     try {
@@ -129,7 +117,7 @@ function MemoListPage() {
       }
       
       if (response.ok) {
-        fetchMemos();
+        fetchMemos(searchTerm);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -158,7 +146,7 @@ function MemoListPage() {
       }
       
       if (response.ok) {
-        fetchMemos();
+        fetchMemos(searchTerm);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -225,7 +213,7 @@ function MemoListPage() {
   };
 
   const handleSearch = () => {
-    fetchMemos();
+    fetchMemos(searchTerm);
   };
   
   const handleKeyDown = (event) => {
@@ -261,7 +249,7 @@ function MemoListPage() {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <IconButton onClick={handleSearch} edge="start">
+                  <IconButton onClick={handleSearch} edge="start" aria-label="search">
                     <SearchIcon />
                   </IconButton>
                 </InputAdornment>
@@ -301,84 +289,102 @@ function MemoListPage() {
       </Paper>
 
       <List>
-        {memos.map((memo) => (
-          <ListItem 
-            key={memo.id}
-            component={Paper}
-            sx={{ 
-              mb: 2, 
-              p: 2,
-              borderLeft: memo.memo_type === 'shared' ? '4px solid #FFD600' : 'none',
-              backgroundColor: memo.memo_type === 'shared' ? '#FFF9C4' : 'white'
-            }}
-          >
-            <ListItemText
-              primary={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {memo.title}
-                  {memo.memo_type === 'shared' && (
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
-                        backgroundColor: '#FFD600', 
-                        color: '#222', 
-                        px: 1, 
-                        py: 0.5, 
-                        borderRadius: 1,
-                        fontSize: '0.7rem',
-                        fontWeight: 'bold'
-                      }}
-                    >
-                      공유받은 메모
-                    </Typography>
-                  )}
-                </Box>
-              }
-              secondary={new Date(memo.created_at).toLocaleDateString()}
-              onClick={() => navigate(`/memos/${memo.id}`)}
-              sx={{ cursor: 'pointer' }}
-            />
-            <ListItemSecondaryAction>
-              <IconButton 
-                edge="end" 
-                aria-label="favorite"
-                onClick={() => handleToggleFavorite(memo.id, memo.is_favorite)}
-                sx={{ mr: 1 }}
-              >
-                {memo.is_favorite ? <StarIcon color="warning" /> : <StarBorderIcon />}
-              </IconButton>
-              {memo.memo_type === 'owned' && (
+        {memos.length > 0 ? (
+          memos.map((memo) => (
+            <ListItem 
+              key={memo.id}
+              component={Paper}
+              sx={{ 
+                mb: 2, 
+                p: 2,
+                borderLeft: memo.memo_type === 'shared' ? '4px solid #FFD600' : 'none',
+                backgroundColor: memo.memo_type === 'shared' ? '#FFF9C4' : 'white'
+              }}
+            >
+              <ListItemText
+                primary={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {memo.title}
+                    {memo.memo_type === 'shared' && (
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          backgroundColor: '#FFD600', 
+                          color: '#222', 
+                          px: 1, 
+                          py: 0.5, 
+                          borderRadius: 1,
+                          fontSize: '0.7rem',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        공유받은 메모
+                      </Typography>
+                    )}
+                  </Box>
+                }
+                secondary={new Date(memo.created_at).toLocaleDateString()}
+                onClick={() => navigate(`/memos/${memo.id}`)}
+                sx={{ cursor: 'pointer' }}
+              />
+              <ListItemSecondaryAction>
                 <IconButton 
                   edge="end" 
-                  aria-label="share"
-                  onClick={() => handleShare(memo.id)}
+                  aria-label="favorite"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleToggleFavorite(memo.id, memo.is_favorite);
+                  }}
                   sx={{ mr: 1 }}
                 >
-                  <ShareIcon />
+                  {memo.is_favorite ? <StarIcon color="warning" /> : <StarBorderIcon />}
                 </IconButton>
-              )}
-              {memo.memo_type === 'owned' && (
-                <IconButton 
-                  edge="end" 
-                  aria-label="edit"
-                  onClick={() => handleEdit(memo.id)}
-                  sx={{ mr: 1 }}
-                >
-                  <EditIcon />
-                </IconButton>
-              )}
-              {memo.memo_type === 'owned' && (
-                <IconButton 
-                  edge="end" 
-                  aria-label="delete" 
-                  onClick={() => handleDelete(memo.id)}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              )}
-            </ListItemSecondaryAction>
-          </ListItem>
-        ))}
+                {memo.memo_type === 'owned' && (
+                  <IconButton 
+                    edge="end" 
+                    aria-label="share"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleShare(memo.id);
+                    }}
+                    sx={{ mr: 1 }}
+                  >
+                    <ShareIcon />
+                  </IconButton>
+                )}
+                {memo.memo_type === 'owned' && (
+                  <IconButton 
+                    edge="end" 
+                    aria-label="edit"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleEdit(memo.id);
+                    }}
+                    sx={{ mr: 1 }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                )}
+                {memo.memo_type === 'owned' && (
+                  <IconButton 
+                    edge="end" 
+                    aria-label="delete" 
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleDelete(memo.id);
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                )}
+              </ListItemSecondaryAction>
+            </ListItem>
+          ))
+        ) : (
+          <Typography sx={{ textAlign: 'center', p: 2 }}>
+            표시할 메모가 없습니다.
+          </Typography>
+        )}
       </List>
 
       <Dialog open={shareDialog} onClose={() => { setShareDialog(false); setShareMsg(''); }}>
