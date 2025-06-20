@@ -1,0 +1,33 @@
+{
+  "name": "collaborative-memo-app",
+  "version": "1.0.0",
+  "description": "Real-time collaborative memo application",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest",
+    "test:rds": "node scripts/test-rds-connection.js",
+    "migrate:local": "psql -h localhost -U postgres -d memo_db -f database.sql",
+    "migrate:rds": "node scripts/migrate-rds.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.832.0",
+    "@aws-sdk/lib-storage": "^3.832.0",
+    "@aws-sdk/s3-request-presigner": "^3.832.0",
+    "aws-sdk": "^2.1692.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.1",
+    "pg": "^8.11.3",
+    "socket.io": "^4.7.2",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2"
+  }
+}
