@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
 import MemoListPage from './pages/MemoListPage';
 import MemoEditPage from './pages/MemoEditPage';
 import MemoDetailPage from './pages/MemoDetailPage';
@@ -46,6 +47,7 @@ function App() {
         <KakaoAppBar />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
           <Route path="/memos" element={<MemoListPage />} />
           <Route path="/memos/new" element={<MemoEditPage />} />
           <Route path="/memos/:id/edit" element={<MemoEditPage />} />
