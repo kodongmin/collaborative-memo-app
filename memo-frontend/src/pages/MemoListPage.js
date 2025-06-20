@@ -36,7 +36,6 @@ import GradeIcon from '@mui/icons-material/Grade';
 function MemoListPage() {
   const [memos, setMemos] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState('newest');
   const [viewMode, setViewMode] = useState('all'); // 'all' or 'favorites'
   const [shareDialog, setShareDialog] = useState(false);
@@ -60,7 +59,7 @@ function MemoListPage() {
       if (!token) return;
 
       const params = new URLSearchParams({
-        search: debouncedSearchTerm,
+        search: searchTerm,
         sort: sortOption
       });
 
@@ -91,23 +90,23 @@ function MemoListPage() {
     } catch (error) {
       console.error('Error:', error);
     }
-  }, [debouncedSearchTerm, sortOption, viewMode, navigate, checkAuth]);
+  }, [searchTerm, sortOption, viewMode, navigate, checkAuth]);
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 500);
-
-    return () => {
-      clearTimeout(handler);
+    const initialFetch = async () => {
+      const token = checkAuth();
+      if (!token) return;
+      
+      const response = await fetch(`/api/memos?sort=${sortOption}`, {
+        headers: { 'Authorization': token }
+      });
+      if(response.ok) {
+        const data = await response.json();
+        setMemos(data);
+      }
     };
-  }, [searchTerm]);
-
-  useEffect(() => {
-    const token = checkAuth();
-    if (!token) return;
-    fetchMemos();
-  }, [fetchMemos, checkAuth]);
+    initialFetch();
+  }, [sortOption, viewMode, navigate, checkAuth]);
 
   const handleDelete = async (id) => {
     try {
@@ -225,8 +224,18 @@ function MemoListPage() {
     }
   };
 
+  const handleSearch = () => {
+    fetchMemos();
+  };
+  
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   return (
-    <Container maxWidth="md" sx={{ mt: 4 }}>
+    <Container component={Paper} elevation={3} sx={{ mt: 4, p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
           메모 목록
@@ -247,11 +256,12 @@ function MemoListPage() {
             placeholder="메모 검색..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={handleKeyDown}
             sx={{ mr: 2, flexGrow: 1 }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <IconButton onClick={fetchMemos} edge="start">
+                  <IconButton onClick={handleSearch} edge="start">
                     <SearchIcon />
                   </IconButton>
                 </InputAdornment>
