@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
-const cors = require('cors');
+const path = require('path');
 const { Pool } = require('pg');
 
 // Validate required environment variables
@@ -28,8 +28,7 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "x-auth-token"]
+    methods: ["GET", "POST", "PUT", "DELETE"]
   }
 });
 
@@ -43,16 +42,18 @@ const pool = new Pool({
 });
 
 // Middleware
-app.use(cors({
-  origin: 'http://localhost:3001',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'x-auth-token']
-}));
 app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/memos', memoRoutes);
+
+// API Routes
+app.use(express.static(path.join(__dirname, '..', 'memo-frontend', 'build')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'memo-frontend', 'build', 'index.html'));
+});
 
 // WebSocket connection handling
 io.on('connection', (socket) => {
