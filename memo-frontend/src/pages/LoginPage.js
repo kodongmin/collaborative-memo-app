@@ -21,7 +21,7 @@ function LoginPage() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -33,7 +33,7 @@ function LoginPage() {
 
       if (response.ok) {
         localStorage.clear();
-        localStorage.setItem('token', `Bearer ${data.token}`);
+        localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         navigate('/memos');
       } else {
