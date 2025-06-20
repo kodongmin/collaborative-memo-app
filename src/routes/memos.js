@@ -271,7 +271,7 @@ router.post('/:id/attachment', auth, upload.single('file'), async (req, res) => 
   try {
     // 1. Check memo ownership
     const memoResult = await pool.query(
-      'SELECT attachment_s3_key FROM memos WHERE id = $1 AND user_id = $2',
+      'SELECT attachment_key FROM memos WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
 
@@ -280,7 +280,7 @@ router.post('/:id/attachment', auth, upload.single('file'), async (req, res) => 
     }
 
     // 2. If an old file exists, delete it from S3
-    const oldKey = memoResult.rows[0].attachment_s3_key;
+    const oldKey = memoResult.rows[0].attachment_key;
     if (oldKey) {
       await deleteFromS3(oldKey);
     }
@@ -290,7 +290,7 @@ router.post('/:id/attachment', auth, upload.single('file'), async (req, res) => 
 
     // 4. Update database with new file info
     const updateResult = await pool.query(
-      'UPDATE memos SET attachment_url = $1, attachment_s3_key = $2, attachment_name = $3 WHERE id = $4 RETURNING *',
+      'UPDATE memos SET attachment_url = $1, attachment_key = $2, attachment_name = $3 WHERE id = $4 RETURNING *',
       [url, key, req.file.originalname, id]
     );
     
@@ -313,21 +313,21 @@ router.delete('/:id/attachment', auth, async (req, res) => {
   try {
     // 1. Check memo ownership and get the S3 key
     const memoResult = await pool.query(
-      'SELECT attachment_s3_key FROM memos WHERE id = $1 AND user_id = $2',
+      'SELECT attachment_key FROM memos WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
 
-    if (memoResult.rows.length === 0 || !memoResult.rows[0].attachment_s3_key) {
+    if (memoResult.rows.length === 0 || !memoResult.rows[0].attachment_key) {
       return res.status(404).json({ message: '삭제할 파일이 없거나 권한이 없습니다.' });
     }
 
     // 2. Delete file from S3
-    const s3Key = memoResult.rows[0].attachment_s3_key;
+    const s3Key = memoResult.rows[0].attachment_key;
     await deleteFromS3(s3Key);
 
     // 3. Remove file info from the database
     await pool.query(
-      'UPDATE memos SET attachment_url = NULL, attachment_s3_key = NULL, attachment_name = NULL WHERE id = $1',
+      'UPDATE memos SET attachment_url = NULL, attachment_key = NULL, attachment_name = NULL WHERE id = $1',
       [id]
     );
 
